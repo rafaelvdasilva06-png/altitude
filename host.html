@@ -198,7 +198,7 @@ function render(){
     $('#nx').onclick = next;
   } else if (S.phase === 'final') {
     const r = ranked(); scene.setPlanes(r.slice(0,12));
-    if (finalBuilt) return; finalBuilt = true;
+    if (finalBuilt) return; if (!r.length) { ui.innerHTML = '<div class="final"><span class="lbl">Landed</span><h2>Counting the pilots…</h2></div>'; return } finalBuilt = true;
     const max = Math.max(1, ...r.map(p => p.alt));
     const slot = (p, cls, medal) => p ? `<div class="slot ${cls}" style="--c:${U.color(p.id)}">${U.planeSVG(U.color(p.id))}<div class="blk"><div class="medal">${medal}</div><b>${esc(p.name)}</b><div class="alt" data-to="${p.alt}">0 m</div></div></div>` : '<div></div>';
     ui.innerHTML = `<div class="final"><span class="lbl">Landed · ${r.length} pilots</span>
