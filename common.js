@@ -61,9 +61,10 @@ const lev = (a,b) => { const d = Array.from({length:a.length+1}, (_,i) => [i]); 
 U.score = (q, raw) => {
   if (raw == null || raw === '') return {pts:0, tier:'No answer'};
   if (q.type === 'word') {
-    const g = U.norm(raw), ok = [q.answer, ...String(q.accept||'').split(',')].map(U.norm).filter(Boolean), nr = String(q.near||'').split(',').map(U.norm).filter(Boolean);
-    if (ok.some(a => a === g || (a.length >= 5 && lev(a,g) <= 1))) return {pts:125, tier:'Dialed'};
-    if (nr.includes(g)) return {pts:60, tier:'Warm'};
+    const g = U.norm(raw), toks = g.split(' '), ok = [q.answer, ...String(q.accept||'').split(',')].map(U.norm).filter(Boolean), nr = String(q.near||'').split(',').map(U.norm).filter(Boolean);
+    const hit = k => g === k || (' '+g+' ').includes(' '+k+' ') || (k.length >= 4 && toks.some(t => t.startsWith(k))) || (k.length >= 5 && (lev(k,g) <= 1 || toks.some(t => lev(t,k) <= 1)));
+    if (ok.some(hit)) return {pts:125, tier:'Dialed'};
+    if (nr.some(hit)) return {pts:60, tier:'Warm'};
     return {pts:0, tier:'Miss'};
   }
   const g = U.parseNum(raw), t = U.parseNum(q.answer);

@@ -71,15 +71,14 @@ const scene = U.scene($('#scene'), {area:[.05,.52]});
 const ui = $('#ui');
 
 const DEFAULT_Q = [
-  {type:'number', prompt:'How far is Los Angeles from Lisbon, as the plane flies?', answer:'9137', unit:'km', fact:'I grew up between LA, Rome, Cannes and Lisbon: 9,137 km from my first home to this room.', accept:'', near:'', golden:false},
-  {type:'number', prompt:'How many languages are spoken in the world today?', answer:'7159', unit:'languages', fact:'About 7,159 (Ethnologue). I speak four of them: English, Portuguese, French and Italian.', accept:'', near:'', golden:false},
-  {type:'number', prompt:'How many hours of video are uploaded to YouTube every minute?', answer:'500', unit:'hours', fact:'500 hours a minute. Out of all that noise, my tennis channel gets tens of millions of views a month.', accept:'', near:'', golden:false},
-  {type:'number', prompt:'Nova has around 600 students in my year. How many exchange spots are there at Michigan Ross?', answer:'6', unit:'spots', fact:'Only 6. I got one, and I fly to Michigan in January.', accept:'', near:'', golden:true}
+  {type:'number', prompt:'How many countries have I lived in?', answer:'4', unit:'countries', fact:'USA, Italy, France and Portugal. New country, new school, new language: I learned to adapt fast.', accept:'', near:'', golden:false},
+  {type:'number', prompt:'At what age did I start playing tennis?', answer:'', unit:'years old', fact:'Tennis taught me discipline and drive, and it still shapes how I work.', accept:'', near:'', golden:false},
+  {type:'word', prompt:'What is one of my favourite hobbies outside sport?', answer:'building projects with AI', unit:'a few words', fact:'Building projects with AI, like the game you just played: made with Claude, 674 lines of code.', accept:'ai, artificial intelligence, building, build, coding, code, programming, developing, apps, websites, vibe coding, claude, chatgpt, tech, technology, projects, computers', near:'gaming, video games, investing, trading, finance, business, startups, entrepreneurship, chess, reading, music, design', golden:true}
 ];
-let Q = ls.get('alt_q2', DEFAULT_Q), secs = ls.get('alt_secs', 20);
+let Q = ls.get('alt_q3', DEFAULT_Q), secs = ls.get('alt_secs', 20);
 let S = ls.get('alt_host', null) || {phase:'setup'};
 let P = {}, A = {}, unsubA = null, unsubP = null;
-const saveS = () => ls.set('alt_host', S), saveQ = () => { ls.set('alt_q2', Q); ls.set('alt_secs', secs) };
+const saveS = () => ls.set('alt_host', S), saveQ = () => { ls.set('alt_q3', Q); ls.set('alt_secs', secs) };
 const base = () => location.href.replace(/host\.html.*$/,'').replace(/[?#].*$/,'');
 const joinUrl = () => base() + '#' + S.code;
 const G = p => `games/${S.code}/${p}`;
@@ -179,7 +178,7 @@ function render(){
     const k = Object.keys(pl).filter(id => A[id] || (S.botA||{})[id]).length;
     ui.innerHTML = hud() + `<div class="side card"><div class="top"><span class="lbl">Round ${S.qi+1} of ${Q.length}</span><span class="lbl">${q.golden ? '' : esc(q.unit)}</span></div>
       <div class="row" style="flex-wrap:nowrap;align-items:flex-start;justify-content:space-between;gap:20px"><h2>${esc(q.prompt)}</h2><div class="count" id="count">${Math.max(0, Math.ceil((S.endsAt - net.now())/1000))}</div></div>
-      <p class="muted" style="margin:0;font-size:18px">${q.type === 'word' ? 'Answer in one word' : q.type === 'year' ? 'Answer with a year' : 'Answer in ' + esc(q.unit || 'a number')}</p>
+      <p class="muted" style="margin:0;font-size:18px">${q.type === 'word' ? 'Answer in a few words' : q.type === 'year' ? 'Answer with a year' : 'Answer in ' + esc(q.unit || 'a number')}</p>
       <div class="bar"><i style="width:${n ? k/n*100 : 0}%"></i></div>
       <div class="row" style="justify-content:space-between;margin-top:10px"><span class="muted">${k} of ${n} locked in</span><button class="link" id="rv">Reveal now</button></div></div>`;
     $('#rv').onclick = reveal;

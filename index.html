@@ -113,7 +113,7 @@ function render(){
   else if (St.phase === 'q' && St.q) {
     const q = St.q, done = sent[St.qi] != null, left = Math.max(0, Math.ceil((St.endsAt - net.now())/1000));
     body = `<div class="top"><span class="lbl">Round ${St.qi+1} of ${St.n}</span><span class="lbl" id="tl">${left}s</span></div><h2>${esc(q.prompt)}</h2>
-      <p class="muted" style="margin:0">${q.type === 'word' ? 'Answer in one word' : q.type === 'year' ? 'Answer with a year' : 'Answer in ' + esc(q.unit || 'a number')}</p>` +
+      <p class="muted" style="margin:0">${q.type === 'word' ? 'Answer in a few words' : q.type === 'year' ? 'Answer with a year' : 'Answer in ' + esc(q.unit || 'a number')}</p>` +
       (done ? `<div class="big">${esc(sent[St.qi])}</div><p class="muted" style="margin:0">Locked in. Eyes on the big screen.</p>`
             : `<form class="inp" id="af"><input class="field" id="a" autocomplete="off" ${q.type === 'word' ? 'autocapitalize="off" placeholder="Your answer"' : 'inputmode="decimal" placeholder="Type a number"'} value="${esc(draft)}"><button aria-label="Lock in">↵</button></form><p class="muted" id="er" style="margin:8px 0 0;font-size:14px">${q.type === 'number' ? 'Shortcuts work: 20k, 3m' : ''}</p>`) +
       `<div class="time"><i id="tb" style="width:100%"></i></div>`;
