@@ -23,6 +23,8 @@
 .r{font-size:16px;grid-template-columns:14px minmax(0,1fr) auto auto;padding:10px 12px}
 .join{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-58%);margin:0 auto;max-width:460px}
 .join h1{font-size:40px;font-weight:700;margin:14px 0 6px}
+.snd{background:none;border:0;color:var(--soft);display:grid;place-items:center;padding:4px;min-height:32px}
+.medal{margin-top:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:14px;color:#cfd6e2}.medal.m1{color:var(--lime)}.medal.m3{color:#e0a06a}
 </style>
 </head>
 <body>
@@ -51,22 +53,31 @@ function connect(){
   unsub = net.on(`games/${code}/state`, v => {
     const prev = St; St = v;
     if (!v) { status = 'nogame' } else status = '';
-    if (!prev || !v || prev.phase !== v.phase || prev.qi !== v.qi) draft = '';
+    if (!prev || !v || prev.phase !== v.phase || prev.qi !== v.qi) { draft = ''; if (v && prev && joined) cue(v) }
     render();
   });
 }
+function cue(v){
+  const b = me && (v.board || {})[me.uid];
+  if (v.phase === 'q') U.sfx.soft();
+  else if (v.phase === 'reveal') { U.sfx.whoosh(); if (b) setTimeout(() => U.sfx.tier(b.tier), 700) }
+  else if (v.phase === 'final') { if (b && b.rank <= 3) { U.sfx.fanfare(); U.confetti(3500) } else U.sfx.reveal() }
+}
+let lastTick = null;
 function join(name){
+  U.sfx.unlock(); U.sfx.pop();
   me = {uid: U.rid(10), name: name.slice(0,18)}; joined = true; sent = {}; saveMe();
   net.set(`games/${code}/players/${me.uid}`, {name: me.name, at: net.TS()}); render();
 }
 function answer(v){
   sent[St.qi] = v; saveMe();
-  net.set(`games/${code}/answers/${St.qi}/${me.uid}`, {a: v, t: net.TS()}); render();
+  net.set(`games/${code}/answers/${St.qi}/${me.uid}`, {a: v, t: net.TS()}); U.sfx.lock(); render();
 }
 
 setInterval(() => { if (!St || St.phase !== 'q') return;
   const ms = St.endsAt - net.now(), t = $('#tl'), b = $('#tb');
-  if (t) t.textContent = Math.max(0, Math.ceil(ms/1000)) + 's';
+  const sec = Math.max(0, Math.ceil(ms/1000)); if (t) t.textContent = sec + 's';
+  if (sec <= 5 && sec > 0 && sec !== lastTick && sent[St.qi] == null) { lastTick = sec; U.sfx.tick(sec <= 1) }
   if (b) b.style.width = Math.max(0, Math.min(100, ms / ((St.dur || 20000)) * 100)) + '%';
 }, 250);
 
@@ -77,7 +88,7 @@ function myPlane(){
 function hud(){
   if (!St || !me) return '';
   const b = (St.board || {})[me.uid], segs = Array.from({length: St.n || 0}, (_,i) => `<i class="${i < St.qi || (i === St.qi && St.phase !== 'q') ? 'on' : i === St.qi ? 'now' : ''}"></i>`).join('');
-  return `<div class="hud"><span class="muted">You</span><b>${fmt(b ? b.alt : 0)} m</b><div class="segs">${segs}</div>${b && b.rank ? `<span class="muted">#${b.rank} of ${St.total}</span>` : ''}</div>`;
+  return `<div class="hud"><span class="muted">You</span><b>${fmt(b ? b.alt : 0)} m</b><div class="segs">${segs}</div>${b && b.rank ? `<span class="muted">#${b.rank} of ${St.total}</span>` : ''}<button class="snd" id="snd" aria-label="Sound">${U.speakerSVG(U.sfx.muted)}</button></div>`;
 }
 function render(){
   if (!code) {
@@ -113,7 +124,8 @@ function render(){
       <div class="rows" style="margin-top:12px">${b ? `<div class="r" style="--c:${U.color(me.uid)}"><span class="dot"></span><span>${b.a == null ? '<span class="muted">No answer</span>' : esc(sent[St.qi] ?? b.a)}</span><span class="tier t-${String(b.tier).split(' ')[0]}">${esc(b.tier)}</span><span class="g ${b.gain < 0 ? 'neg' : ''}">${b.gain >= 0 ? '+' : ''}${fmt(b.gain)} m</span></div>` : '<p class="muted">You\'ll fly from the next round.</p>'}</div>`;
   } else if (St.phase === 'final') {
     const b = (St.board || {})[me.uid];
-    body = `<span class="lbl">Landed</span><div class="big">${b ? '#' + b.rank + ' <span style="font-size:.45em" class="muted">of ' + St.total + '</span>' : 'Thanks for flying'}</div><p class="muted" style="margin:0">${b ? 'Final altitude ' + fmt(b.alt) + ' m. ' : ''}Look up at the podium.</p>`;
+    const md = b && b.rank <= 3 ? ['1st','2nd','3rd'][b.rank-1] : '';
+    body = `<span class="lbl">Landed</span>${md ? `<div class="medal m${b.rank}">${md} place</div>` : ''}<div class="big">${b ? '#' + b.rank + ' <span style="font-size:.45em" class="muted">of ' + St.total + '</span>' : 'Thanks for flying'}</div><p class="muted" style="margin:0">${b ? 'Final altitude ' + fmt(b.alt) + ' m. ' : ''}Look up at the podium.</p>`;
   } else body = `<span class="lbl">Flight ${esc(code)}</span><h2>Holding pattern…</h2>`;
   ui.innerHTML = hud() + `<div class="dock card">${body}</div>`;
   const f = $('#af');
@@ -122,6 +134,7 @@ function render(){
       if (St.q.type !== 'word' && !isFinite(U.parseNum(v))) { $('#er').textContent = 'Numbers only, please.'; return }
       answer(v) } }
 }
+ui.addEventListener('click', e => { U.sfx.unlock(); const b = e.target.closest('#snd'); if (b) b.innerHTML = U.speakerSVG(U.sfx.toggle()) });
 window.addEventListener('hashchange', () => { const c = location.hash.slice(1).toUpperCase().replace(/[^A-Z]/g,'').slice(0,4); if (c && c !== code) { code = c; joined = false; St = null; connect() } });
 if (code) connect(); else render();
 }

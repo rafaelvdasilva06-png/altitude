@@ -25,14 +25,24 @@
 .fact{font-size:20px;margin:0 0 6px}
 .link{background:none;border:0;color:var(--soft);text-decoration:underline;font-size:15px;padding:8px 0}
 .words{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin-top:14px}.words b{color:#dfe5f0}
-.final{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:min(760px,92vw);text-align:center}
-.pod{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:end;margin:26px 0 8px}
-.pod div{background:#0e121b;border:1px solid var(--line);border-radius:20px 20px 6px 6px;padding:16px 10px}
-.pod b{display:block;font-size:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pod .p1{border-color:var(--lime);min-height:200px}.pod .p2{min-height:165px}.pod .p3{min-height:140px}
-.pod em{font-style:normal;font-size:34px;font-weight:800;display:block}
-.rest{columns:2;column-gap:28px;text-align:left;margin-top:14px;font-size:16px}
-.rest div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);break-inside:avoid}
+.final{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1000px,94vw);text-align:center;background:var(--card);border:1px solid var(--line);border-radius:32px;padding:30px 34px;box-shadow:0 30px 80px #0008;max-height:94vh;overflow:auto}
+.final h2{font-size:clamp(32px,3.2vw,50px);margin-top:10px;min-height:1.1em}
+.pod{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:end;margin:22px 0 6px}
+.slot{opacity:0;transform:translateY(40px) scale(.96);transition:opacity .7s,transform .7s cubic-bezier(.2,.9,.3,1.2);display:flex;flex-direction:column;align-items:center}
+.slot.in{opacity:1;transform:none}
+.slot svg{width:min(170px,80%);height:auto;margin-bottom:-6px;filter:drop-shadow(0 10px 12px #0008)}
+.blk{width:100%;background:#0e121b;border:1px solid var(--line);border-radius:22px 22px 8px 8px;padding:16px 12px}
+.blk b{display:block;font-size:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:2px 0}
+.blk .alt{color:var(--soft);font-size:17px;font-variant-numeric:tabular-nums}
+.medal{font-weight:800;font-size:15px;letter-spacing:.14em;color:#cfd6e2}
+.p1 .blk{min-height:180px;border-color:var(--lime);box-shadow:0 0 50px #d7f25c30}.p1 .medal{color:var(--lime)}.p1 .blk b{font-size:30px}
+.p2 .blk{min-height:140px}.p3 .blk{min-height:110px}.p3 .medal{color:#e0a06a}
+.board{opacity:0;transition:opacity .8s;text-align:left;margin-top:16px;display:grid;gap:0 28px}.board.in{opacity:1}.board.two{grid-template-columns:1fr 1fr}
+.br{display:grid;grid-template-columns:28px 10px minmax(0,1fr) minmax(0,1.2fr) 82px;gap:12px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--line);font-size:16px}
+.br .rk{color:var(--soft);font-variant-numeric:tabular-nums}.br .dot{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.br .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.br .bar{height:6px;background:#2a3140;border-radius:3px;overflow:hidden}.br .bar i{display:block;height:100%;background:var(--c)}
+.br .m{text-align:right;color:var(--soft);font-variant-numeric:tabular-nums}
+.snd{background:none;border:0;color:var(--soft);display:grid;place-items:center;padding:4px;min-height:32px}
 /* setup */
 .page{position:fixed;inset:0;overflow:auto;z-index:6;background:#0f131cf0}
 .wrap{max-width:900px;margin:0 auto;padding:40px 20px 80px}
@@ -61,15 +71,15 @@ const scene = U.scene($('#scene'), {area:[.05,.52]});
 const ui = $('#ui');
 
 const DEFAULT_Q = [
-  {type:'number', prompt:'How many cities did I grow up in?', answer:'4', unit:'cities', fact:'Los Angeles, Rome, Cannes and Lisbon.', accept:'', near:'', golden:false},
-  {type:'word', prompt:'Which sport did I captain a team in at the French U18 Championship?', answer:'tennis', unit:'one word', fact:'We made the regional finals.', accept:'tenis, ténis', near:'padel, squash, badminton, table tennis, ping pong', golden:false},
-  {type:'number', prompt:'How many views does my tennis channel get per month?', answer:'20000000', unit:'views', fact:'Change this to your real number.', accept:'', near:'', golden:false},
-  {type:'number', prompt:'How many languages do I speak fluently?', answer:'4', unit:'languages', fact:'English, Portuguese, French and Italian.', accept:'', near:'', golden:true}
+  {type:'number', prompt:'How far is Los Angeles from Lisbon, as the plane flies?', answer:'9137', unit:'km', fact:'I grew up between LA, Rome, Cannes and Lisbon: 9,137 km from my first home to this room.', accept:'', near:'', golden:false},
+  {type:'number', prompt:'How many languages are spoken in the world today?', answer:'7159', unit:'languages', fact:'About 7,159 (Ethnologue). I speak four of them: English, Portuguese, French and Italian.', accept:'', near:'', golden:false},
+  {type:'number', prompt:'How many hours of video are uploaded to YouTube every minute?', answer:'500', unit:'hours', fact:'500 hours a minute. Out of all that noise, my tennis channel gets tens of millions of views a month.', accept:'', near:'', golden:false},
+  {type:'number', prompt:'Nova has around 600 students in my year. How many exchange spots are there at Michigan Ross?', answer:'6', unit:'spots', fact:'Only 6. I got one, and I fly to Michigan in January.', accept:'', near:'', golden:true}
 ];
-let Q = ls.get('alt_q', DEFAULT_Q), secs = ls.get('alt_secs', 20);
+let Q = ls.get('alt_q2', DEFAULT_Q), secs = ls.get('alt_secs', 20);
 let S = ls.get('alt_host', null) || {phase:'setup'};
 let P = {}, A = {}, unsubA = null, unsubP = null;
-const saveS = () => ls.set('alt_host', S), saveQ = () => { ls.set('alt_q', Q); ls.set('alt_secs', secs) };
+const saveS = () => ls.set('alt_host', S), saveQ = () => { ls.set('alt_q2', Q); ls.set('alt_secs', secs) };
 const base = () => location.href.replace(/host\.html.*$/,'').replace(/[?#].*$/,'');
 const joinUrl = () => base() + '#' + S.code;
 const G = p => `games/${S.code}/${p}`;
@@ -81,8 +91,8 @@ const ranked = () => Object.entries(pilots()).map(([id,p]) => ({id, name:p.name,
 function listen(){
   if (unsubP) unsubP(); if (unsubA) unsubA();
   if (!S.code) return;
-  unsubP = net.on(G('players'), v => { P = v || {}; render() });
-  if (S.phase === 'q') unsubA = net.on(G('answers/'+S.qi), v => { A = v || {}; render() });
+  unsubP = net.on(G('players'), v => { const b = Object.keys(P).length; P = v || {}; if (S.phase === 'lobby' && Object.keys(P).length > b) U.sfx.pop(); render() });
+  if (S.phase === 'q') unsubA = net.on(G('answers/'+S.qi), v => { const b = Object.keys(A).length; A = v || {}; if (Object.keys(A).length > b) U.sfx.soft(); render() });
 }
 function publish(){
   if (!S.code) return;
@@ -103,6 +113,7 @@ function openLobby(){
 function start(i){
   S.qi = i; S.phase = 'q'; S.qStart = net.now(); S.endsAt = S.qStart + secs*1000; S.res = {}; A = {};
   saveS(); listen(); publish(); botsAnswer(); render();
+  if (i === 0) { U.sfx.takeoff(); U.sfx.hum(true) } else U.sfx.whoosh();
 }
 function reveal(){
   if (S.phase !== 'q') return;
@@ -116,8 +127,11 @@ function reveal(){
     S.res[id] = {a, tier:r.tier, gain};
   });
   S.botA = {}; saveS(); if (unsubA) { unsubA(); unsubA = null } publish(); render();
+  const order = ['Dialed','Close','Warm','Cold','Miss','No answer'], best = Object.values(S.res).map(r => r.tier).sort((a,b) => order.indexOf(a) - order.indexOf(b))[0] || 'Miss';
+  U.sfx.reveal(); setTimeout(() => U.sfx.whoosh(), 200); setTimeout(() => U.sfx.tier(best), 900);
 }
-function next(){ if (S.qi + 1 < Q.length) start(S.qi + 1); else { S.phase = 'final'; saveS(); publish(); render() } }
+function next(){ if (S.qi + 1 < Q.length) start(S.qi + 1); else { S.phase = 'final'; finalBuilt = false; U.sfx.hum(false); saveS(); publish(); render() } }
+let finalBuilt = false, lastTick = null;
 
 const BOTS = ['Maverick','Goose','Amelia','Wilbur','Skye','Orville'];
 function addBots(){ S.bots = S.bots || {}; BOTS.forEach(n => S.bots['bot_'+n] = {name:n+' (test)'}); saveS(); publish(); render() }
@@ -136,6 +150,7 @@ setInterval(() => {
   const done = ids.length > 0 && ids.every(id => A[id] || (S.botA||{})[id]);
   if (left <= 0 || done) return setTimeout(reveal, done && left > 0 ? 700 : 0);
   const c = $('#count'); if (c) c.textContent = left;
+  if (left <= 5 && left !== lastTick) { lastTick = left; U.sfx.tick(left <= 1) }
 }, 250);
 
 /* ---------- render ---------- */
@@ -143,7 +158,7 @@ function hud(){
   const r = ranked(), lead = r[0];
   const segs = Q.map((_,i) => `<i class="${i < S.qi || (i === S.qi && S.phase !== 'q') ? 'on' : i === S.qi ? 'now' : ''}"></i>`).join('');
   return `<div class="hud"><span class="logo" style="font-size:22px">Altitude<span>.</span></span><div class="segs">${segs}</div>
-    ${lead && lead.alt > 0 ? `<span class="muted">Leader</span><b>${esc(lead.name)} · ${fmt(lead.alt)} m</b>` : ''}<span class="muted">${r.length} pilots</span></div>`;
+    ${lead && lead.alt > 0 ? `<span class="muted">Leader</span><b>${esc(lead.name)} · ${fmt(lead.alt)} m</b>` : ''}<span class="muted">${r.length} pilots</span><button class="snd" id="snd" aria-label="Sound">${U.speakerSVG(U.sfx.muted)}</button></div>`;
 }
 function render(){
   if (S.phase === 'setup') { scene.setPlanes([]); return renderSetup() }
@@ -183,12 +198,23 @@ function render(){
     $('#nx').onclick = next;
   } else if (S.phase === 'final') {
     const r = ranked(); scene.setPlanes(r.slice(0,12));
-    const pod = [[r[1],'p2','2nd'],[r[0],'p1','1st'],[r[2],'p3','3rd']];
-    ui.innerHTML = `<div class="final card"><span class="lbl">Landed · ${r.length} pilots</span><h2 style="font-size:clamp(34px,3.4vw,52px);margin-top:10px">${r[0] ? esc(r[0].name) + ' knows Rafael best.' : 'No pilots'}</h2>
-      <div class="pod">${pod.map(([p,c,l]) => p ? `<div class="${c}"><em>${l}</em><b>${esc(p.name)}</b><span class="muted">${fmt(p.alt)} m</span></div>` : '<span></span>').join('')}</div>
-      <div class="rest">${r.slice(3,13).map((p,i) => `<div><span>${i+4}. ${esc(p.name)}</span><span class="muted">${fmt(p.alt)} m</span></div>`).join('')}</div>
-      <button class="link" id="again" style="margin-top:16px">New game</button></div>`;
+    if (finalBuilt) return; finalBuilt = true;
+    const max = Math.max(1, ...r.map(p => p.alt));
+    const slot = (p, cls, medal) => p ? `<div class="slot ${cls}" style="--c:${U.color(p.id)}">${U.planeSVG(U.color(p.id))}<div class="blk"><div class="medal">${medal}</div><b>${esc(p.name)}</b><div class="alt" data-to="${p.alt}">0 m</div></div></div>` : '<div></div>';
+    ui.innerHTML = `<div class="final"><span class="lbl">Landed · ${r.length} pilots</span>
+      <h2 id="fh">And the pilot who knows Rafael best is…</h2>
+      <div class="pod">${slot(r[1],'p2','2nd')}${slot(r[0],'p1','1st')}${slot(r[2],'p3','3rd')}</div>
+      <div class="board ${r.length > 9 ? 'two' : ''}" id="board">${r.slice(3,23).map((p,i) => `<div class="br" style="--c:${U.color(p.id)}"><span class="rk">${i+4}</span><span class="dot"></span><span class="nm">${esc(p.name)}</span><span class="bar"><i style="width:${p.alt/max*100}%"></i></span><span class="m">${fmt(p.alt)} m</span></div>`).join('')}</div>
+      <button class="link" id="again">New game</button></div>`;
     $('#again').onclick = () => { if (S.code) net.remove('games/' + S.code); S = {phase:'setup'}; saveS(); listen(); render() };
+    const show = (cls, snd) => { const el = ui.querySelector('.slot.' + cls); if (!el) return; el.classList.add('in'); snd();
+      const a = el.querySelector('.alt'), to = +a.dataset.to, t0 = performance.now();
+      (function f(t){ const k = Math.min(1, (t - t0)/1100); a.textContent = fmt(to * (1 - Math.pow(1-k, 3))) + ' m'; if (k < 1) requestAnimationFrame(f) })(t0) };
+    U.sfx.drumroll(2.4);
+    setTimeout(() => show('p3', U.sfx.hit), 2600);
+    setTimeout(() => show('p2', U.sfx.hit), 3700);
+    setTimeout(() => { show('p1', U.sfx.fanfare); U.confetti(); const h = $('#fh'); if (h && r[0]) h.textContent = r[0].name + ' knows Rafael best.' }, 5000);
+    setTimeout(() => { const b = $('#board'); if (b) b.classList.add('in') }, 5900);
   }
 }
 
@@ -220,6 +246,7 @@ function renderSetup(){
   $('#secs').oninput = e => { secs = Math.max(5, Math.min(90, +e.target.value || 20)); saveQ() };
   $('#open').onclick = () => { if (!Q.length || Q.some(q => !q.prompt.trim() || !String(q.answer).trim())) { $('#err').textContent = 'Every question needs a question and an answer.'; return } openLobby() };
 }
+ui.addEventListener('click', e => { U.sfx.unlock(); const b = e.target.closest('#snd'); if (b) { const m = U.sfx.toggle(); b.innerHTML = U.speakerSVG(m); if (!m && S.phase !== 'setup' && S.phase !== 'lobby' && S.phase !== 'final') U.sfx.hum(true) } });
 listen(); render(); if (S.code && S.phase !== 'setup') publish();
 }
 </script>
