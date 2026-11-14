@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#121722">
+<title>Altitude</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.dock{position:absolute;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));margin:0 auto;max-width:520px;padding:22px 22px}
+.dock h2{font-size:26px;font-weight:700;margin:8px 0 6px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.hud{top:max(12px,env(safe-area-inset-top));padding:8px 18px;gap:12px;font-size:14px}
+.hud b{font-size:17px}
+.segs i{width:22px}
+.inp{position:relative;margin-top:14px}
+.inp .field{padding-right:64px}
+.inp button{position:absolute;right:7px;top:7px;bottom:7px;width:48px;border:0;border-radius:12px;background:#232a3a;color:#fff;font-size:20px}
+.big{font-size:48px;font-weight:800;letter-spacing:-.04em;line-height:1;margin:10px 0 8px}
+.time{height:4px;border-radius:2px;background:#2a3140;margin-top:12px;overflow:hidden}.time i{display:block;height:100%;background:var(--lime);transition:width .25s linear}
+.r{font-size:16px;grid-template-columns:14px minmax(0,1fr) auto auto;padding:10px 12px}
+.join{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-58%);margin:0 auto;max-width:460px}
+.join h1{font-size:40px;font-weight:700;margin:14px 0 6px}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div class="ui" id="ui"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+{
+const {$, esc, fmt, ls} = U;
+const net = U.net();
+const scene = U.scene($('#scene'), {ground:.62, band:.22, area:[.5,.5], maxW:220});
+const ui = $('#ui');
+let code = (location.hash.slice(1) || '').toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);
+const slot = (location.search.match(/[?&]p=(\w+)/)||[])[1]||'';
+let me = null, St = null, joined = false, unsub = null, sent = {}, draft = '', status = '';
+
+function load(){ me = ls.get('alt_me_' + code + slot, null); if (me) { joined = true; sent = me.sent || {} } }
+const saveMe = () => { if (me) { me.sent = sent; ls.set('alt_me_' + code + slot, me) } };
+
+function connect(){
+  if (unsub) unsub();
+  load();
+  unsub = net.on(`games/${code}/state`, v => {
+    const prev = St; St = v;
+    if (!v) { status = 'nogame' } else status = '';
+    if (!prev || !v || prev.phase !== v.phase || prev.qi !== v.qi) draft = '';
+    render();
+  });
+}
+function join(name){
+  me = {uid: U.rid(10), name: name.slice(0,18)}; joined = true; sent = {}; saveMe();
+  net.set(`games/${code}/players/${me.uid}`, {name: me.name, at: net.TS()}); render();
+}
+function answer(v){
+  sent[St.qi] = v; saveMe();
+  net.set(`games/${code}/answers/${St.qi}/${me.uid}`, {a: v, t: net.TS()}); render();
+}
+
+setInterval(() => { if (!St || St.phase !== 'q') return;
+  const ms = St.endsAt - net.now(), t = $('#tl'), b = $('#tb');
+  if (t) t.textContent = Math.max(0, Math.ceil(ms/1000)) + 's';
+  if (b) b.style.width = Math.max(0, Math.min(100, ms / ((St.dur || 20000)) * 100)) + '%';
+}, 250);
+
+function myPlane(){
+  const b = St && St.board && me && St.board[me.uid];
+  scene.setPlanes(me ? [{id: me.uid, name: me.name, alt: b ? b.alt : 0, gain: St && St.phase === 'reveal' && b ? b.gain : null, hideTag: false}] : []);
+}
+function hud(){
+  if (!St || !me) return '';
+  const b = (St.board || {})[me.uid], segs = Array.from({length: St.n || 0}, (_,i) => `<i class="${i < St.qi || (i === St.qi && St.phase !== 'q') ? 'on' : i === St.qi ? 'now' : ''}"></i>`).join('');
+  return `<div class="hud"><span class="muted">You</span><b>${fmt(b ? b.alt : 0)} m</b><div class="segs">${segs}</div>${b && b.rank ? `<span class="muted">#${b.rank} of ${St.total}</span>` : ''}</div>`;
+}
+function render(){
+  if (!code) {
+    scene.setPlanes([]);
+    ui.innerHTML = `<form class="join card" id="cf"><span class="logo">Altitude<span>.</span></span><h1>Board the flight</h1><p class="muted" style="margin:0 0 14px">Enter the 4-letter flight code on the big screen.</p>
+      <input class="field" id="c" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD" style="text-transform:uppercase;letter-spacing:.2em;font-size:24px;font-weight:700"><button class="btn" style="width:100%;margin-top:12px">Continue</button></form>`;
+    $('#cf').onsubmit = e => { e.preventDefault(); const v = $('#c').value.toUpperCase().replace(/[^A-Z]/g,''); if (v.length === 4) { code = v; location.hash = v; connect() } };
+    return;
+  }
+  if (!joined) {
+    scene.setPlanes([{id:'preview', name:'You', alt:0}]);
+    ui.innerHTML = `<form class="join card" id="nf"><span class="lbl">Flight ${esc(code)}</span><h1>Pick your pilot name</h1><p class="muted" style="margin:0 0 14px">It shows on the big screen under your plane.</p>
+      <input class="field" id="n" maxlength="18" autocomplete="nickname" placeholder="e.g. maverick_22"><button class="btn" style="width:100%;margin-top:12px">Join the runway</button>
+      ${status === 'nogame' ? '<p class="muted" style="margin:12px 0 0">No flight with that code yet. Check the code on the big screen.</p>' : ''}</form>`;
+    $('#nf').onsubmit = e => { e.preventDefault(); const v = $('#n').value.trim(); if (v) join(v) };
+    return;
+  }
+  myPlane();
+  let body = '';
+  if (!St) body = `<span class="lbl">Flight ${esc(code)}</span><h2>Connecting to the tower…</h2>`;
+  else if (St.phase === 'lobby') body = `<span class="lbl">Boarding · Flight ${esc(code)}</span><h2>You're on the runway, ${esc(me.name)}.</h2><p class="muted" style="margin:0">Find your plane on the big screen. Take-off soon.</p>`;
+  else if (St.phase === 'q' && St.q) {
+    const q = St.q, done = sent[St.qi] != null, left = Math.max(0, Math.ceil((St.endsAt - net.now())/1000));
+    body = `<div class="top"><span class="lbl">Round ${St.qi+1} of ${St.n}</span><span class="lbl" id="tl">${left}s</span></div><h2>${esc(q.prompt)}</h2>
+      <p class="muted" style="margin:0">${q.type === 'word' ? 'Answer in one word' : q.type === 'year' ? 'Answer with a year' : 'Answer in ' + esc(q.unit || 'a number')}</p>` +
+      (done ? `<div class="big">${esc(sent[St.qi])}</div><p class="muted" style="margin:0">Locked in. Eyes on the big screen.</p>`
+            : `<form class="inp" id="af"><input class="field" id="a" autocomplete="off" ${q.type === 'word' ? 'autocapitalize="off" placeholder="Your answer"' : 'inputmode="decimal" placeholder="Type a number"'} value="${esc(draft)}"><button aria-label="Lock in">↵</button></form><p class="muted" id="er" style="margin:8px 0 0;font-size:14px">${q.type === 'number' ? 'Shortcuts work: 20k, 3m' : ''}</p>`) +
+      `<div class="time"><i id="tb" style="width:100%"></i></div>`;
+  } else if (St.phase === 'reveal' && St.reveal) {
+    const r = St.reveal, b = (St.board || {})[me.uid];
+    body = `<div class="top"><span class="lbl">Round ${St.qi+1} · The answer</span>${r.golden ? '<span class="lbl" style="color:var(--lime)">×2</span>' : ''}</div><div class="big">${esc(r.answer)} <span style="font-size:.45em">${esc(St.q && St.q.type === 'word' ? '' : r.unit)}</span></div>
+      ${r.fact ? `<p style="margin:0 0 4px">${esc(r.fact)}</p>` : ''}
+      <div class="rows" style="margin-top:12px">${b ? `<div class="r" style="--c:${U.color(me.uid)}"><span class="dot"></span><span>${b.a == null ? '<span class="muted">No answer</span>' : esc(sent[St.qi] ?? b.a)}</span><span class="tier t-${String(b.tier).split(' ')[0]}">${esc(b.tier)}</span><span class="g ${b.gain < 0 ? 'neg' : ''}">${b.gain >= 0 ? '+' : ''}${fmt(b.gain)} m</span></div>` : '<p class="muted">You\'ll fly from the next round.</p>'}</div>`;
+  } else if (St.phase === 'final') {
+    const b = (St.board || {})[me.uid];
+    body = `<span class="lbl">Landed</span><div class="big">${b ? '#' + b.rank + ' <span style="font-size:.45em" class="muted">of ' + St.total + '</span>' : 'Thanks for flying'}</div><p class="muted" style="margin:0">${b ? 'Final altitude ' + fmt(b.alt) + ' m. ' : ''}Look up at the podium.</p>`;
+  } else body = `<span class="lbl">Flight ${esc(code)}</span><h2>Holding pattern…</h2>`;
+  ui.innerHTML = hud() + `<div class="dock card">${body}</div>`;
+  const f = $('#af');
+  if (f) { const i = $('#a'); i.oninput = () => { draft = i.value };
+    f.onsubmit = e => { e.preventDefault(); const v = i.value.trim(); if (!v) return;
+      if (St.q.type !== 'word' && !isFinite(U.parseNum(v))) { $('#er').textContent = 'Numbers only, please.'; return }
+      answer(v) } }
+}
+window.addEventListener('hashchange', () => { const c = location.hash.slice(1).toUpperCase().replace(/[^A-Z]/g,'').slice(0,4); if (c && c !== code) { code = c; joined = false; St = null; connect() } });
+if (code) connect(); else render();
+}
+</script>
+</body>
+</html>
