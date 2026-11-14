@@ -42,6 +42,20 @@
 .br .rk{color:var(--soft);font-variant-numeric:tabular-nums}.br .dot{width:9px;height:9px;border-radius:50%;background:var(--c)}
 .br .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.br .bar{height:6px;background:#2a3140;border-radius:3px;overflow:hidden}.br .bar i{display:block;height:100%;background:var(--c)}
 .br .m{text-align:right;color:var(--soft);font-variant-numeric:tabular-nums}
+.story{position:fixed;inset:0;z-index:8;background:#0b0e15}
+.sl{position:absolute;inset:0;opacity:0;transition:opacity 1.6s ease}.sl.on{opacity:1}
+.sl .bg{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(40px) brightness(.45)}
+.sl img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scale(1.0);transition:transform 7s ease-out}
+.sl.on img{transform:scale(1.06)}
+.story::after{content:"";position:absolute;inset:auto 0 0 0;height:38%;background:linear-gradient(transparent,#0b0e15e6);pointer-events:none}
+.cap{position:absolute;left:4vw;bottom:5vh;z-index:2}
+.capa{font-size:clamp(44px,5vw,80px);font-weight:800;letter-spacing:-.04em;line-height:1}.capa span{font-size:.45em;font-weight:700}
+.nxs{position:absolute;right:4vw;bottom:5vh;z-index:2;opacity:.75}.nxs:hover{opacity:1}
+.ph{border-top:1px solid var(--line);padding-top:12px;display:grid;gap:10px}
+.thumbs{display:flex;flex-wrap:wrap;gap:10px}.thumbs>span{position:relative}
+.thumbs img{width:96px;height:72px;object-fit:cover;border-radius:10px;display:block}
+.thumbs button{position:absolute;top:-8px;right:-8px;width:26px;height:26px;border-radius:50%;border:0;background:#0e121b;color:#fff;font-size:16px;line-height:1}
+@media (prefers-reduced-motion:reduce){.sl,.sl img{transition:none}}
 .snd{background:none;border:0;color:var(--soft);display:grid;place-items:center;padding:4px;min-height:32px}
 /* setup */
 .page{position:fixed;inset:0;overflow:auto;z-index:6;background:#0f131cf0}
@@ -71,14 +85,25 @@ const scene = U.scene($('#scene'), {area:[.05,.52]});
 const ui = $('#ui');
 
 const DEFAULT_Q = [
-  {type:'number', prompt:'How many countries have I lived in?', answer:'4', unit:'countries', fact:'USA, Italy, France and Portugal. New country, new school, new language: I learned to adapt fast.', accept:'', near:'', golden:false},
-  {type:'number', prompt:'At what age did I start playing tennis?', answer:'', unit:'years old', fact:'Tennis taught me discipline and drive, and it still shapes how I work.', accept:'', near:'', golden:false},
-  {type:'word', prompt:'What is one of my favourite hobbies outside sport?', answer:'building projects with AI', unit:'a few words', fact:'Building projects with AI, like the game you just played: made with Claude, 674 lines of code.', accept:'ai, artificial intelligence, building, build, coding, code, programming, developing, apps, websites, vibe coding, claude, chatgpt, tech, technology, projects, computers', near:'gaming, video games, investing, trading, finance, business, startups, entrepreneurship, chess, reading, music, design', golden:true}
+  {id:'q1', type:'number', prompt:'How many schools did I attend before I turned 10?', answer:'', unit:'schools', fact:'New country, new school, new friends, sometimes a new language. I learned to adapt fast.', accept:'', near:'', golden:false},
+  {id:'q2', type:'number', prompt:'On average, how many hours a week did I play tennis?', answer:'', unit:'hours a week', fact:'Tennis taught me discipline and drive, and it still shapes how I work.', accept:'', near:'', golden:false},
+  {id:'q3', type:'word', prompt:'What is one of my favourite hobbies outside sport?', answer:'building projects with AI', unit:'a few words', fact:'Building projects with AI, like the game you just played: made with Claude, 674 lines of code.', accept:'ai, artificial intelligence, building, build, coding, code, programming, developing, apps, websites, vibe coding, claude, chatgpt, tech, technology, projects, computers', near:'gaming, video games, investing, trading, finance, business, startups, entrepreneurship, chess, reading, music, design', golden:true}
 ];
-let Q = ls.get('alt_q3', DEFAULT_Q), secs = ls.get('alt_secs', 20);
+let Q = ls.get('alt_q4', DEFAULT_Q), secs = ls.get('alt_secs', 20);
 let S = ls.get('alt_host', null) || {phase:'setup'};
+Q.forEach(q => { if (!q.id) q.id = U.rid(6) });
+
+/* photos: kept in this browser only (IndexedDB), never uploaded */
+const IDB = { db: null,
+  open(){ return this.db || (this.db = new Promise((res, rej) => { const r = indexedDB.open('altitude', 1); r.onupgradeneeded = () => r.result.createObjectStore('photos'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error) })) },
+  async get(k){ const db = await this.open(); return new Promise(res => { const t = db.transaction('photos').objectStore('photos').get(k); t.onsuccess = () => res(t.result || []); t.onerror = () => res([]) }) },
+  async set(k, v){ const db = await this.open(); return new Promise(res => { const t = db.transaction('photos','readwrite'); t.objectStore('photos').put(v, k); t.oncomplete = res; t.onerror = res }) } };
+const PH = {}; // qid -> [objectURL]
+async function loadPhotos(){ for (const q of Q) { const blobs = await IDB.get(q.id); (PH[q.id]||[]).forEach(u => URL.revokeObjectURL(u)); PH[q.id] = blobs.map(b => URL.createObjectURL(b)) } }
+function shrink(file){ return new Promise(res => { const img = new Image(), u = URL.createObjectURL(file); img.onload = () => { const k = Math.min(1, 2000/Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); c.toBlob(b => res(b), 'image/jpeg', .86) }; img.onerror = () => { URL.revokeObjectURL(u); res(null) }; img.src = u }) }
+const hasStory = q => q && (PH[q.id]||[]).length > 0;
 let P = {}, A = {}, unsubA = null, unsubP = null;
-const saveS = () => ls.set('alt_host', S), saveQ = () => { ls.set('alt_q3', Q); ls.set('alt_secs', secs) };
+const saveS = () => ls.set('alt_host', S), saveQ = () => { ls.set('alt_q4', Q); ls.set('alt_secs', secs) };
 const base = () => location.href.replace(/host\.html.*$/,'').replace(/[?#].*$/,'');
 const joinUrl = () => base() + '#' + S.code;
 const G = p => `games/${S.code}/${p}`;
@@ -129,8 +154,10 @@ function reveal(){
   const order = ['Dialed','Close','Warm','Cold','Miss','No answer'], best = Object.values(S.res).map(r => r.tier).sort((a,b) => order.indexOf(a) - order.indexOf(b))[0] || 'Miss';
   U.sfx.reveal(); setTimeout(() => U.sfx.whoosh(), 200); setTimeout(() => U.sfx.tier(best), 900);
 }
+function story(){ S.phase = 'story'; saveS(); publish(); render(); U.sfx.whoosh() }
+function advance(){ if (S.phase === 'reveal' && hasStory(Q[S.qi])) story(); else next() }
 function next(){ if (S.qi + 1 < Q.length) start(S.qi + 1); else { S.phase = 'final'; finalBuilt = false; U.sfx.hum(false); saveS(); publish(); render() } }
-let finalBuilt = false, lastTick = null;
+let finalBuilt = false, lastTick = null, storyFor = null, slideT = null;
 
 const BOTS = ['Maverick','Goose','Amelia','Wilbur','Skye','Orville'];
 function addBots(){ S.bots = S.bots || {}; BOTS.forEach(n => S.bots['bot_'+n] = {name:n+' (test)'}); saveS(); publish(); render() }
@@ -193,8 +220,18 @@ function render(){
       ${q.fact ? `<p class="fact">${esc(q.fact)}</p>` : ''}<p class="muted" style="margin:0">${esc(q.prompt)}</p>${words}
       <div class="rows">${rows.slice(0,5).map(r => `<div class="r" style="--c:${U.color(r.id)}"><span class="dot"></span><span class="nm">${esc(r.name)}</span><span>${r.a == null ? '<span class="muted">No answer</span>' : esc(U.showAns(q, r.a))}</span><span class="tier t-${r.tier.split(' ')[0]}">${esc(r.tier)}</span><span class="g ${r.gain<0?'neg':''}">${r.gain>=0?'+':''}${fmt(r.gain)} m</span></div>`).join('')}</div>
       ${rows.length > 5 ? `<p class="muted" style="margin:10px 0 0">+ ${rows.length-5} more pilots</p>` : ''}
-      <button class="btn" id="nx" style="width:100%;margin-top:18px">${S.qi + 1 < Q.length ? 'Next round' : 'See who landed first'}</button></div>`;
-    $('#nx').onclick = next;
+      <button class="btn" id="nx" style="width:100%;margin-top:18px">${hasStory(q) ? 'Tell the story' : S.qi + 1 < Q.length ? 'Next round' : 'See who landed first'}</button><p class="muted" style="margin:10px 0 0;font-size:14px;text-align:center">Space or → also works</p></div>`;
+    $('#nx').onclick = advance;
+  } else if (S.phase === 'story') {
+    scene.setPlanes(planeList(false));
+    if (storyFor === S.qi && $('#story')) return; storyFor = S.qi;
+    const ph = PH[q.id] || [];
+    ui.innerHTML = `<div class="story" id="story">${ph.map((u,i) => `<div class="sl ${i===0?'on':''}"><div class="bg" style="background-image:url('${u}')"></div><img src="${u}" alt=""></div>`).join('')}
+      <div class="cap"><span class="lbl">Round ${S.qi+1} · The story</span><div class="capa">${esc(U.showAns(q, q.answer))} <span>${esc(q.type==='word'?'':q.unit)}</span></div></div>
+      <button class="btn ghost nxs" id="nxs">${S.qi + 1 < Q.length ? 'Next round' : 'See who landed first'} →</button></div>`;
+    $('#nxs').onclick = next;
+    clearInterval(slideT); let k = 0; const sl = ui.querySelectorAll('.sl');
+    if (sl.length > 1) slideT = setInterval(() => { if (S.phase !== 'story') return clearInterval(slideT); sl[k].classList.remove('on'); k = (k+1) % sl.length; sl[k].classList.add('on') }, 5500);
   } else if (S.phase === 'final') {
     const r = ranked(); scene.setPlanes(r.slice(0,12));
     if (finalBuilt) return; if (!r.length) { ui.innerHTML = '<div class="final"><span class="lbl">Landed</span><h2>Counting the pilots…</h2></div>'; return } finalBuilt = true;
@@ -237,15 +274,31 @@ function renderSetup(){
     <label>Question<input class="field" data-k="prompt" value="${esc(q.prompt)}"></label>
     <label>Fact shown on the reveal<input class="field" data-k="fact" value="${esc(q.fact||'')}"></label>
     ${q.type==='word' ? `<div class="g2"><label>Also accept (commas)<input class="field" data-k="accept" value="${esc(q.accept)}"></label><label>Near misses, half points<input class="field" data-k="near" value="${esc(q.near)}"></label></div>` : ''}
-    <label class="chk"><input type="checkbox" data-k="golden"${q.golden?' checked':''}> Golden round (points ×2)</label></div>`).join('');
+    <label class="chk"><input type="checkbox" data-k="golden"${q.golden?' checked':''}> Golden round (points ×2)</label>
+    <div class="ph"><div class="row" style="justify-content:space-between"><span class="muted" style="font-size:14px">Story photos: full screen after the reveal while you talk. Stored only in this browser.</span>
+      <label class="btn ghost" style="min-height:44px;font-size:15px;display:inline-flex;align-items:center;cursor:pointer">Add photos<input type="file" accept="image/*" multiple data-photos="${q.id}" hidden></label></div>
+      <div class="thumbs">${(PH[q.id]||[]).map((u,j) => `<span><img src="${u}" alt=""><button data-rm="${q.id}" data-j="${j}" aria-label="Remove photo">×</button></span>`).join('') || '<span class="muted" style="font-size:14px">No photos: this round goes straight to the next one.</span>'}</div></div></div>`).join('');
   qs.oninput = qs.onchange = e => { const c = e.target.closest('.q'), k = e.target.dataset.k; if (!c || !k) return;
     Q[+c.dataset.i][k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value; saveQ(); if (k === 'type' && e.type === 'change') renderSetup() };
-  qs.onclick = e => { const d = e.target.dataset.del; if (d != null) { Q.splice(+d,1); saveQ(); renderSetup() } };
-  $('#add').onclick = () => { Q.push({type:'number',prompt:'',answer:'',unit:'',fact:'',accept:'',near:'',golden:false}); saveQ(); renderSetup() };
+  qs.onclick = async e => { const d = e.target.dataset.del; if (d != null) { Q.splice(+d,1); saveQ(); renderSetup() }
+    const rm = e.target.dataset.rm; if (rm) { const b = await IDB.get(rm); b.splice(+e.target.dataset.j, 1); await IDB.set(rm, b); await loadPhotos(); renderSetup() } };
+  qs.addEventListener('change', async e => { const id = e.target.dataset.photos; if (!id) return; const files = [...e.target.files];
+    e.target.closest('.ph').querySelector('.thumbs').innerHTML = '<span class="muted">Adding photos…</span>';
+    const add = (await Promise.all(files.map(shrink))).filter(Boolean); const b = await IDB.get(id); await IDB.set(id, b.concat(add)); await loadPhotos(); renderSetup() });
+  $('#add').onclick = () => { Q.push({id:U.rid(6),type:'number',prompt:'',answer:'',unit:'',fact:'',accept:'',near:'',golden:false}); saveQ(); renderSetup() };
   $('#secs').oninput = e => { secs = Math.max(5, Math.min(90, +e.target.value || 20)); saveQ() };
   $('#open').onclick = () => { if (!Q.length || Q.some(q => !q.prompt.trim() || !String(q.answer).trim())) { $('#err').textContent = 'Every question needs a question and an answer.'; return } openLobby() };
 }
 ui.addEventListener('click', e => { U.sfx.unlock(); const b = e.target.closest('#snd'); if (b) { const m = U.sfx.toggle(); b.innerHTML = U.speakerSVG(m); if (!m && S.phase !== 'setup' && S.phase !== 'lobby' && S.phase !== 'final') U.sfx.hum(true) } });
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input,select,textarea') || S.phase === 'setup') return;
+  if (![' ','ArrowRight','PageDown','Enter'].includes(e.key)) return; e.preventDefault(); U.sfx.unlock();
+  if (S.phase === 'lobby' && Object.keys(pilots()).length) start(0);
+  else if (S.phase === 'q') reveal();
+  else if (S.phase === 'reveal') advance();
+  else if (S.phase === 'story') next();
+});
+loadPhotos().then(() => render());
 listen(); render(); if (S.code && S.phase !== 'setup') publish();
 }
 </script>

@@ -122,6 +122,9 @@ function render(){
     body = `<div class="top"><span class="lbl">Round ${St.qi+1} · The answer</span>${r.golden ? '<span class="lbl" style="color:var(--lime)">×2</span>' : ''}</div><div class="big">${esc(r.answer)} <span style="font-size:.45em">${esc(St.q && St.q.type === 'word' ? '' : r.unit)}</span></div>
       ${r.fact ? `<p style="margin:0 0 4px">${esc(r.fact)}</p>` : ''}
       <div class="rows" style="margin-top:12px">${b ? `<div class="r" style="--c:${U.color(me.uid)}"><span class="dot"></span><span>${b.a == null ? '<span class="muted">No answer</span>' : esc(sent[St.qi] ?? b.a)}</span><span class="tier t-${String(b.tier).split(' ')[0]}">${esc(b.tier)}</span><span class="g ${b.gain < 0 ? 'neg' : ''}">${b.gain >= 0 ? '+' : ''}${fmt(b.gain)} m</span></div>` : '<p class="muted">You\'ll fly from the next round.</p>'}</div>`;
+  } else if (St.phase === 'story') {
+    const b = (St.board || {})[me.uid];
+    body = `<span class="lbl">Round ${St.qi+1} · The story</span><h2>Eyes up: Rafael is telling the story.</h2><p class="muted" style="margin:0">${b ? 'You\'re at ' + fmt(b.alt) + ' m, #' + b.rank + ' of ' + St.total + '.' : ''}</p>`;
   } else if (St.phase === 'final') {
     const b = (St.board || {})[me.uid];
     const md = b && b.rank <= 3 ? ['1st','2nd','3rd'][b.rank-1] : '';
