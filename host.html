@@ -44,6 +44,12 @@
 .br .m{text-align:right;color:var(--soft);font-variant-numeric:tabular-nums}
 .story{position:fixed;inset:0;z-index:8;background:radial-gradient(ellipse at 50% 40%,#151b28cc,#0b0e15f2 75%)}
 .wall{position:absolute;inset:0}
+.hero{position:absolute;inset:0;overflow:hidden}
+.hbg{position:absolute;inset:-60px;background-size:cover;background-position:center;filter:blur(40px) brightness(.4)}
+.hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:heroIn 1.6s cubic-bezier(.2,.8,.2,1) forwards,kb 24s ease-out 1.6s forwards}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,#0b0e1599 100%),linear-gradient(transparent 70%,#0b0e15b0);pointer-events:none}
+@keyframes heroIn{from{opacity:0;transform:scale(1.12);filter:blur(14px) brightness(.6)}to{opacity:1;transform:scale(1);filter:none}}
+@keyframes kb{from{transform:scale(1)}to{transform:scale(1.07)}}
 .pol{position:absolute;margin:0;background:#f7f4ec;padding:12px 12px 0;border-radius:3px;box-shadow:0 18px 40px #000a,0 2px 6px #0006;
   transform:translate(-50%,-50%) rotate(var(--r));opacity:0;animation:drop .9s cubic-bezier(.2,.9,.25,1.15) var(--d) forwards,float 7s ease-in-out calc(var(--d) + 1s) infinite alternate}
 .pol img{display:block;max-width:calc(var(--w) - 24px);max-height:calc(var(--h) - 56px);width:auto;height:auto;object-fit:cover;filter:saturate(1.05) contrast(1.02)}
@@ -59,7 +65,7 @@
 .thumbs img{width:120px;height:90px;object-fit:cover;border-radius:10px;display:block}
 .thumbs .pc{display:block;width:120px;margin-top:6px;background:#0e121b;border:1px solid #3a4252;border-radius:8px;color:var(--ink);font-size:13px;padding:6px 8px}
 .thumbs button{position:absolute;top:-8px;right:-8px;width:26px;height:26px;border-radius:50%;border:0;background:#0e121b;color:#fff;font-size:16px;line-height:1}
-@media (prefers-reduced-motion:reduce){.pol{animation:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.pol,.hero img{animation:none;opacity:1}}
 .snd{background:none;border:0;color:var(--soft);display:grid;place-items:center;padding:4px;min-height:32px}
 /* setup */
 .page{position:fixed;inset:0;overflow:auto;z-index:6;background:#0f131cf0}
@@ -106,7 +112,9 @@ const PH = {}; // qid -> [{u, cap}]
 const norm1 = x => x instanceof Blob ? {b:x, cap:''} : x;
 async function loadPhotos(){ for (const q of Q) { const items = (await IDB.get(q.id)).map(norm1); (PH[q.id]||[]).forEach(p => URL.revokeObjectURL(p.u)); PH[q.id] = items.map(it => ({u:URL.createObjectURL(it.b), cap:it.cap||''})) } }
 function shrink(file){ return new Promise(res => { const img = new Image(), u = URL.createObjectURL(file); img.onload = () => { const k = Math.min(1, 2000/Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); c.toBlob(b => res(b), 'image/jpeg', .86) }; img.onerror = () => { URL.revokeObjectURL(u); res(null) }; img.src = u }) }
-const hasStory = q => q && (PH[q.id]||[]).length > 0;
+const BUNDLED = {q1: 'story-round1.jpg'}; // built into the site, so it works on any computer
+Object.values(BUNDLED).forEach(src => { const i = new Image(); i.src = src });
+const hasStory = q => q && ((PH[q.id]||[]).length > 0 || !!BUNDLED[q.id]);
 let P = {}, A = {}, unsubA = null, unsubP = null;
 const saveS = () => ls.set('alt_host', S), saveQ = () => { ls.set('alt_q4', Q); ls.set('alt_secs', secs) };
 const base = () => location.href.replace(/host\.html.*$/,'').replace(/[?#].*$/,'');
@@ -230,13 +238,13 @@ function render(){
   } else if (S.phase === 'story') {
     scene.setPlanes(planeList(false));
     if (storyFor === S.qi && $('#story')) return; storyFor = S.qi;
-    const ph = PH[q.id] || [], n = ph.length;
+    const hero = BUNDLED[q.id], ph = hero ? [] : (PH[q.id] || []), n = ph.length;
     const cols = n <= 1 ? 1 : n <= 2 ? 2 : n <= 4 ? 2 : n <= 6 ? 3 : 4, rows = Math.ceil(n / cols);
     const cw = 92 / cols, ch = 74 / rows;
     const cards = ph.map((p, i) => { const r = Math.floor(i / cols), c = i % cols, inRow = Math.min(cols, n - r*cols), off = (cols - inRow) * cw / 2;
       const x = 4 + off + c*cw + cw/2 + (((i*37)%7) - 3) * .5, y = 6 + r*ch + ch/2 + (((i*53)%5) - 2) * .6, rot = (((i*71)%13) - 6) * .9;
       return `<figure class="pol" style="left:${x}%;top:${y}%;--r:${rot}deg;--d:${.35 + i*.9}s;--w:${cw*.86}vw;--h:${ch*.82}vh"><i class="tape"></i><img src="${p.u}" alt="">${p.cap ? `<figcaption>${esc(p.cap)}</figcaption>` : '<figcaption></figcaption>'}</figure>` }).join('');
-    ui.innerHTML = `<div class="story" id="story"><div class="wall">${cards}</div>
+    ui.innerHTML = `<div class="story" id="story">${hero ? `<div class="hero"><div class="hbg" style="background-image:url('${hero}')"></div><img src="${hero}" alt=""></div>` : ''}<div class="wall">${cards}</div>
       <div class="cap"><span class="lbl">Round ${S.qi+1} · The story</span><div class="capa">${esc(U.showAns(q, q.answer))} <span>${esc(q.type==='word'?'':q.unit)}</span></div></div>
       <button class="btn ghost nxs" id="nxs">${S.qi + 1 < Q.length ? 'Next round' : 'See who landed first'} →</button></div>`;
     $('#nxs').onclick = next;
@@ -284,7 +292,8 @@ function renderSetup(){
     <label>Fact shown on the reveal<input class="field" data-k="fact" value="${esc(q.fact||'')}"></label>
     ${q.type==='word' ? `<div class="g2"><label>Also accept (commas)<input class="field" data-k="accept" value="${esc(q.accept)}"></label><label>Near misses, half points<input class="field" data-k="near" value="${esc(q.near)}"></label></div>` : ''}
     <label class="chk"><input type="checkbox" data-k="golden"${q.golden?' checked':''}> Golden round (points ×2)</label>
-    <div class="ph"><div class="row" style="justify-content:space-between"><span class="muted" style="font-size:14px">Story photos appear as a polaroid wall after the reveal while you talk. Add a short caption to each (optional). Stored only in this browser.</span>
+    ${BUNDLED[q.id] ? `<div class="ph"><span class="muted" style="font-size:14px">Built-in story slide (works on any computer):</span><img src="${BUNDLED[q.id]}" alt="" style="width:260px;border-radius:10px"></div>` : ''}
+    <div class="ph" ${BUNDLED[q.id] ? 'hidden' : ''}><div class="row" style="justify-content:space-between"><span class="muted" style="font-size:14px">Story photos appear as a polaroid wall after the reveal while you talk. Add a short caption to each (optional). Stored only in this browser.</span>
       <label class="btn ghost" style="min-height:44px;font-size:15px;display:inline-flex;align-items:center;cursor:pointer">Add photos<input type="file" accept="image/*" multiple data-photos="${q.id}" hidden></label></div>
       <div class="thumbs">${(PH[q.id]||[]).map((p,j) => `<span><img src="${p.u}" alt=""><button data-rm="${q.id}" data-j="${j}" aria-label="Remove photo">×</button><input class="pc" data-cap="${q.id}" data-j="${j}" maxlength="28" placeholder="Caption" value="${esc(p.cap)}"></span>`).join('') || '<span class="muted" style="font-size:14px">No photos: this round goes straight to the next one.</span>'}</div></div></div>`).join('');
   qs.oninput = qs.onchange = e => { const c = e.target.closest('.q'), k = e.target.dataset.k; if (!c || !k) return;
